@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fanren Survivor 进阶版</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-display: 'Cormorant Garamond', serif;
+      --font-body: 'Noto Sans SC', sans-serif;
+      --bg: #0c0f0e;
+      --surface: rgba(19, 24, 22, 0.84);
+      --surface-2: rgba(31, 39, 36, 0.95);
+      --border: rgba(145, 190, 162, 0.18);
+      --text: #edf2ec;
+      --muted: #98a59c;
+      --primary: #79cfaa;
+      --gold: #dcb670;
+      --danger: #cf6f6f;
+      --ice: #84d7f3;
+      --purple: #b98df0;
+      --radius: 18px;
+      --shadow: 0 22px 80px rgba(0,0,0,.42);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { overflow: hidden; font-family: var(--font-body); color: var(--text); background: var(--bg); }
+    canvas { display:block; width:100vw; height:100vh; }
+    .ui { position:fixed; inset:0; pointer-events:none; }
+    .topbar { position:absolute; top:16px; left:16px; right:16px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .panel { pointer-events:auto; background:var(--surface); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
+    .hud { display:grid; grid-template-columns:repeat(10,auto); gap:10px; padding:12px 14px; font-size:13px; font-variant-numeric:tabular-nums; align-items:center; }
+    .hud b { color: var(--primary); }
+    .title { padding:12px 16px; text-align:right; min-width:280px; }
+    .title h1 { font-family:var(--font-display); font-size:clamp(1.9rem,4vw,3.2rem); line-height:.92; letter-spacing:.05em; }
+    .title p { color:var(--muted); font-size:13px; margin-top:6px; }
+    .legend { position:absolute; left:16px; bottom:16px; max-width:560px; padding:12px 14px; font-size:13px; color:var(--muted); }
+    .legend b { color:var(--text); }
+    .pausebtn { position:absolute; right:16px; bottom:16px; pointer-events:auto; border:1px solid rgba(255,255,255,.08); background:rgba(25,31,29,.9); color:var(--text); border-radius:999px; padding:10px 14px; font-weight:700; }
+    .overlay { position:absolute; inset:0; display:none; place-items:center; background:rgba(0,0,0,.56); pointer-events:auto; padding:20px; }
+    .overlay.show { display:grid; }
+    .modal { width:min(1120px,100%); padding:24px; background:rgba(16,19,18,.95); border:1px solid rgba(144,188,160,.18); border-radius:24px; box-shadow:0 30px 90px rgba(0,0,0,.5); max-height:calc(100vh - 40px); overflow:auto; }
+    .modal h2 { font-family:var(--font-display); font-size:clamp(2rem,5vw,4rem); margin-bottom:8px; letter-spacing:.05em; }
+    .modal p { color:var(--muted); margin-bottom:14px; line-height:1.6; }
+    .split { display:grid; grid-template-columns:1.2fr .9fr; gap:18px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+    .card { background:var(--surface-2); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:14px; min-height:200px; display:flex; flex-direction:column; justify-content:space-between; gap:10px; }
+    .card.active { outline:2px solid rgba(121,207,170,.8); }
+    .card h3 { font-size:18px; }
+    .card ul { padding-left:16px; color:var(--muted); line-height:1.6; font-size:13px; }
+    .tag { display:inline-block; font-size:12px; color:#111; background:var(--gold); border-radius:999px; padding:4px 10px; }
+    .btnrow { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    button { pointer-events:auto; border:none; cursor:pointer; min-width:120px; border-radius:999px; padding:11px 16px; font-family:var(--font-body); font-weight:700; color:#0e120f; background:linear-gradient(180deg,#e1eddc,#8fc7ab); }
+    button.alt { background:#2a3531; color:var(--text); }
+    button.warn { background:linear-gradient(180deg,#efd9b2,#dca45f); }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .mini { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; font-size:13px; color:var(--muted); }
+    .mini div { background:rgba(255,255,255,.03); border-radius:14px; padding:10px 12px; }
+    .bossbar { position:absolute; left:50%; transform:translateX(-50%); top:96px; width:min(700px,calc(100vw - 40px)); display:none; padding:10px 12px; }
+    .bossbar.show { display:block; }
+    .bossname { font-size:13px; margin-bottom:8px; color:#f3dca6; letter-spacing:.08em; display:flex; justify-content:space-between; gap:8px; }
+    .bar { height:14px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.08); }
+    .fill { height:100%; width:0; background:linear-gradient(90deg,#a84e4e,#e4a96c); }
+    .iconrow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .svgicon { width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,.04); display:grid; place-items:center; border:1px solid rgba(255,255,255,.06); }
+    .portrait { width:76px; height:76px; border-radius:18px; background:rgba(255,255,255,.04); display:grid; place-items:center; border:1px solid rgba(255,255,255,.08); }
+    .tree { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .node { padding:12px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }
+    .node strong { display:block; margin-bottom:4px; }
+    .storeline { font-size:13px; color:var(--muted); }
+    @media (max-width: 960px){ .topbar{flex-direction:column;} .hud{grid-template-columns:repeat(3,auto);} .title{text-align:left;min-width:auto;} .split{grid-template-columns:1fr;} .tree{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="ui">
+  <div class="topbar">
+    <div class="panel hud">
+      <div>生命 <b id="hp"></b></div>
+      <div>护盾 <b id="shield"></b></div>
+      <div>灵石 <b id="gold"></b></div>
+      <div>境界 <b id="level"></b></div>
+      <div>经验 <b id="xp"></b></div>
+      <div>第 <b id="wave"></b> 关</div>
+      <div>击杀 <b id="kills"></b></div>
+      <div>地图 <b id="stage"></b></div>
+      <div>角色 <b id="heroName"></b></div>
+      <div>Boss <b id="bossState"></b></div>
+    </div>
+    <div class="panel title">
+      <h1>凡人修仙传<br>Survivor 进阶版</h1>
+      <p>角色选择 · 图鉴 · 设置 · 难度 · 专属技能树</p>
+    </div>
+  </div>
+
+  <div class="panel bossbar" id="bossBarWrap">
+    <div class="bossname"><span id="bossName">Boss</span><span id="bossPhase">一阶段</span></div>
+    <div class="bar"><div class="fill" id="bossFill"></div></div>
+  </div>
+
+  <div class="panel legend">
+    <b>操作：</b> WASD / 方向键移动，空格暂停/继续，M 开关音效。开始前可选角色；局外可升级天赋、境界树、解锁法宝。第 3、6、9 关为多阶段 Boss 战。
+  </div>
+  <button class="pausebtn panel" id="pauseBtn">暂停</button>
+
+  <div class="overlay show" id="menuOverlay">
+    <div class="modal">
+      <h2>修仙之路</h2>
+      <p>请选择起始角色，并使用局外资源强化永久天赋。当前版本已加入角色路线、SVG 图标美术、局外成长存档，以及更完整的 Boss 技能。</p>
+      <div class="split">
+        <div>
+          <h3 style="margin-bottom:12px">角色选择</h3>
+          <div class="cards" id="heroCards"></div>
+          <h3 style="margin:20px 0 12px">已解锁法宝</h3>
+          <div class="iconrow" id="unlockIcons"></div>
+        </div>
+        <div>
+          <div class="panel" style="padding:16px; background:rgba(255,255,255,.03)">
+            <h3 style="margin-bottom:10px">局外成长</h3>
+            <p class="storeline">魂玉：<b id="metaCurrency"></b>，可用于永久强化。下方升级会自动保存到浏览器本地。</p>
+            <div class="tree" id="metaTree"></div>
+            <div class="btnrow">
+              <button id="startBtn">开始游戏</button>
+              <button class="alt" id="toggleSoundBtn">音效：开</button>
+              <button class="warn" id="resetMetaBtn">重置存档</button>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <button class="alt" id="encyclopediaBtn">打开图鉴</button>
+            <button class="alt" id="settingsBtn">设置</button>
+          </div>
+          <div class="mini">
+            <div>韩立：飞剑与稳健成长</div>
+            <div>难度：<b id="difficultyLabel">普通</b></div>
+            <div>南宫婉：冰焰与护盾控制</div>
+            <div>魔修路线：高爆发高风险</div>
+            <div>Boss：弹幕、召唤、阶段转场</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="levelOverlay"><div class="modal"><h2>境界突破</h2><p>选择一项强化，继续构筑本局流派。</p><div class="cards" id="levelCards"></div></div></div>
+
+  <div class="overlay" id="shopOverlay">
+    <div class="modal">
+      <h2 id="shopTitle">Finish 第 1 关</h2>
+      <p>坊市已开启。每关后可以购物、刷新、并在满足条件时触发法宝进化。</p>
+      <div class="cards" id="shopCards"></div>
+      <div class="btnrow">
+        <button id="nextWaveBtn">继续下一关</button>
+        <button class="alt" id="rerollShopBtn">刷新坊市（6 灵石）</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="overlay" id="encyclopediaOverlay"><div class="modal"><h2>图鉴</h2><p>这里汇总已登场角色、法宝、敌人与 Boss。</p><div class="split"><div><h3 style="margin-bottom:12px">角色与法宝</h3><div class="cards" id="encyclopediaHeroes"></div><h3 style="margin:20px 0 12px">法宝图鉴</h3><div class="cards" id="encyclopediaWeapons"></div></div><div><h3 style="margin-bottom:12px">敌人与 Boss</h3><div class="cards" id="encyclopediaEnemies"></div><div class="btnrow"><button id="closeEncyclopediaBtn">关闭</button></div></div></div></div></div>
+  <div class="overlay" id="settingsOverlay"><div class="modal"><h2>设置</h2><p>你可以在这里调整难度和音效。</p><div class="cards" id="difficultyCards"></div><div class="btnrow"><button class="alt" id="settingsSoundBtn">音效切换</button><button id="closeSettingsBtn">关闭</button></div></div></div>
+
+  <div class="overlay" id="pauseOverlay"><div class="modal"><h2>暂停中</h2><p>可继续战斗、返回主菜单，或切换音效。</p><div class="btnrow"><button id="resumeBtn">继续</button><button class="alt" id="pauseSoundBtn">音效切换</button><button class="warn" id="backMenuBtn">返回主菜单</button></div></div></div>
+  <div class="overlay" id="gameOverOverlay"><div class="modal"><h2>道途受阻</h2><p id="gameOverText"></p><div class="btnrow"><button id="restartBtn">重新开始</button><button class="alt" id="gameOverMenuBtn">返回菜单</button></div></div></div>
+</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = innerWidth, H = innerHeight;
+canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);
+window.addEventListener('resize', ()=>{W=innerWidth;H=innerHeight;canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);});
+
+const ui = {
+  hp: hp, shield: shield, gold: gold, level: level, xp: xp, wave: wave, kills: kills, stage: stage, heroName: heroName, bossState: bossState
+};
+const overlays = { menu: menuOverlay, level: levelOverlay, shop: shopOverlay, pause: pauseOverlay, gameOver: gameOverOverlay };
+const levelCards = document.getElementById('levelCards');
+const shopCards = document.getElementById('shopCards');
+const shopTitle = document.getElementById('shopTitle');
+const gameOverText = document.getElementById('gameOverText');
+const bossBarWrap = document.getElementById('bossBarWrap');
+const bossNameEl = document.getElementById('bossName');
+const bossFill = document.getElementById('bossFill');
+const bossPhaseEl = document.getElementById('bossPhase');
+const heroCards = document.getElementById('heroCards');
+const unlockIcons = document.getElementById('unlockIcons');
+const metaTree = document.getElementById('metaTree');
+const metaCurrencyEl = document.getElementById('metaCurrency');
+const encyclopediaHeroes = document.getElementById('encyclopediaHeroes');
+const encyclopediaWeapons = document.getElementById('encyclopediaWeapons');
+const encyclopediaEnemies = document.getElementById('encyclopediaEnemies');
+const difficultyCards = document.getElementById('difficultyCards');
+const difficultyLabel = document.getElementById('difficultyLabel');
+const keys = {};
+window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()] = true; if(e.key===' '){ e.preventDefault(); togglePause(); } if(e.key.toLowerCase()==='m') toggleSound(); });
+window.addEventListener('keyup', e=>keys[e.key.toLowerCase()] = false);
+
+const stages = [
+  {name:'山谷遗迹', bg1:'#20352b', bg2:'#0b0f0d', accent:'#79cfaa'},
+  {name:'乱星海岸', bg1:'#183443', bg2:'#0b0f14', accent:'#84d7f3'},
+  {name:'阴雾秘境', bg1:'#34233d', bg2:'#0f0a13', accent:'#d4a4f4'}
+];
+
+const icons = {
+  sword:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M44 8L56 20L37 39L25 39L25 27L44 8Z" fill="#9CE8C0"/><path d="M23 41L15 49" stroke="#EFD39B" stroke-width="5" stroke-linecap="round"/><path d="M12 52L20 44" stroke="#EFD39B" stroke-width="5" stroke-linecap="round"/></svg>`,
+  shield:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M32 8L50 14V28C50 40 43 49 32 56C21 49 14 40 14 28V14L32 8Z" fill="#BFE5FF" stroke="#E8F5FF" stroke-width="2"/></svg>`,
+  bug:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><ellipse cx="32" cy="34" rx="12" ry="16" fill="#E7D778"/><circle cx="32" cy="18" r="7" fill="#E7D778"/><path d="M20 28L10 22M44 28L54 22M20 40L9 44M44 40L55 44" stroke="#C2B15C" stroke-width="3" stroke-linecap="round"/></svg>`,
+  talisman:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><rect x="18" y="10" width="28" height="44" rx="4" fill="#F3D49B"/><path d="M24 22H40M24 30H36M24 38H38" stroke="#A75B38" stroke-width="3" stroke-linecap="round"/></svg>`,
+  ice:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M32 8V56M15 18L49 46M49 18L15 46M10 32H54" stroke="#8BE4FF" stroke-width="4" stroke-linecap="round"/></svg>`,
+  demon:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M18 18L26 10L32 18L38 10L46 18V44C46 50 40 54 32 54C24 54 18 50 18 44V18Z" fill="#D98787"/><circle cx="26" cy="30" r="3" fill="#111"/><circle cx="38" cy="30" r="3" fill="#111"/></svg>`,
+  wolf:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M14 40L20 18L30 26L40 18L50 40L42 50H22L14 40Z" fill="#D8D8F4"/></svg>`,
+  fish:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><ellipse cx="28" cy="32" rx="16" ry="10" fill="#69B9D4"/><path d="M44 32L56 24V40L44 32Z" fill="#69B9D4"/></svg>`,
+  corpse:`<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><rect x="18" y="14" width="28" height="36" rx="10" fill="#7D8985"/><circle cx="26" cy="28" r="3" fill="#111"/><circle cx="38" cy="28" r="3" fill="#111"/></svg>`
+};
+
+const difficulties = { easy:{name:'简单', enemyHp:0.82, enemyDmg:0.82, soul:0.85}, normal:{name:'普通', enemyHp:1, enemyDmg:1, soul:1}, hard:{name:'困难', enemyHp:1.28, enemyDmg:1.2, soul:1.35} };
+
+const heroSkillTrees = {
+  hanli:[{id:'h1',name:'剑阵精修',cost:l=>8+l*4,desc:'每级飞剑伤害 +4'},{id:'h2',name:'谨慎身法',cost:l=>8+l*4,desc:'每级移动速度 +0.08'}],
+  nangong:[{id:'n1',name:'寒焰真诀',cost:l=>8+l*4,desc:'每级符阵伤害 +3'},{id:'n2',name:'冰魄护体',cost:l=>8+l*4,desc:'每级护盾 +10'}],
+  demon:[{id:'d1',name:'血煞狂攻',cost:l=>8+l*4,desc:'每级暴击 +3%'},{id:'d2',name:'夺魂秘术',cost:l=>8+l*4,desc:'每级击杀回复 0.6 生命'}]
+};
+
+const heroes = {
+  hanli:{ name:'韩立', desc:'稳健型。飞剑强、成长均衡，最适合标准肉割路线。', icon:'sword', color:'#79cfaa', apply:p=>{ p.damage+=2; p.weaponCount+=1; p.range+=20; } },
+  nangong:{ name:'南宫婉', desc:'冰焰护盾型。控场更强，生存更稳。', icon:'ice', color:'#84d7f3', apply:p=>{ p.maxShield+=25; p.shield+=25; p.talismanLevel+=1; p.damage-=2; } },
+  demon:{ name:'魔修路线', desc:'爆发型。高伤高风险，生命较低但暴击更高。', icon:'demon', color:'#d98b8b', apply:p=>{ p.damage+=10; p.crit+=0.15; p.maxHp-=20; p.hp-=20; } }
+};
+
+const enemyTypes = [
+  {name:'炼气散修', icon:'corpse', color:'#b46f6f', hp:18, speed:1.2, size:12, dmg:8, reward:1},
+  {name:'魔道弟子', icon:'demon', color:'#8d5aa4', hp:24, speed:1.45, size:13, dmg:10, reward:2},
+  {name:'海域妖鱼', icon:'fish', color:'#4f99b2', hp:16, speed:1.8, size:10, dmg:7, reward:1},
+  {name:'青狼妖兽', icon:'wolf', color:'#7b9262', hp:28, speed:1.55, size:14, dmg:12, reward:2},
+  {name:'毒尾蝎妖', icon:'bug', color:'#9b8d55', hp:34, speed:1.1, size:15, dmg:14, reward:3},
+  {name:'鬼雾尸傀', icon:'corpse', color:'#69706e', hp:30, speed:1.2, size:15, dmg:12, reward:3},
+  {name:'黑煞执事', icon:'demon', color:'#9c4a4a', hp:62, speed:1.0, size:18, dmg:20, reward:6, elite:true},
+  {name:'筑基狼王近卫', icon:'wolf', color:'#b6b6d2', hp:96, speed:1.25, size:22, dmg:24, reward:10, elite:true},
+  {name:'结丹魔修', icon:'demon', color:'#d3a463', hp:140, speed:1.15, size:24, dmg:32, reward:18, elite:true}
+];
+
+const bosses = {
+  3:{name:'筑基狼王', icon:'wolf', color:'#d9d8ff', hp:920, size:34, speed:1.25, dmg:28, reward:80, phases:['狼群围猎','冲锋撕裂']},
+  6:{name:'车老妖化身', icon:'demon', color:'#e4b46a', hp:1550, size:40, speed:0.95, dmg:40, reward:150, phases:['妖潮召唤','重击震荡']},
+  9:{name:'风希化身', icon:'ice', color:'#90e0ff', hp:1980, size:42, speed:1.4, dmg:46, reward:240, phases:['风刃弹幕','极速转场']}
+};
+
+const upgrades = [
+  {id:'sword', name:'青竹蜂云剑', icon:'sword', desc:'飞剑数量 +1，伤害 +5。', apply:p=>{p.weaponCount+=1; p.damage+=5;}},
+  {id:'speed', name:'风雷翅', icon:'sword', desc:'移动速度提升，并推进风雷进化。', apply:p=>{p.speed+=0.35; p.upgradeFlags.wind+=1;}},
+  {id:'shield', name:'白鳞盾', icon:'shield', desc:'护盾上限与当前护盾提升。', apply:p=>{p.maxShield+=18; p.shield+=18;}},
+  {id:'bug', name:'噬金虫群', icon:'bug', desc:'虫群等级 +1，近身持续伤害。', apply:p=>{p.bugLevel+=1;}},
+  {id:'talisman', name:'符箓飞阵', icon:'talisman', desc:'符阵等级 +1，扩大范围轰击。', apply:p=>{p.talismanLevel+=1;}},
+  {id:'mind', name:'神识扩张', icon:'ice', desc:'拾取范围与攻击范围提高。', apply:p=>{p.pickup+=18; p.range+=28;}},
+  {id:'body', name:'炼体强化', icon:'shield', desc:'生命上限 +20，减伤提升。', apply:p=>{p.maxHp+=20; p.hp+=20; p.armor=Math.min(.55,p.armor+.06);}},
+  {id:'crit', name:'雷灵共鸣', icon:'sword', desc:'暴击率和飞剑伤害提升。', apply:p=>{p.crit+=0.08; p.damage+=8; p.upgradeFlags.thunder+=1;}},
+  {id:'alchemy', name:'炼丹心得', icon:'talisman', desc:'立即回复并提高治疗收益。', apply:p=>{p.hp=Math.min(p.maxHp,p.hp+36); p.healPower+=10;}}
+];
+
+const shopItems = [
+  {name:'补灵丹', icon:'talisman', cost:8, desc:'回复生命。', buy:p=>pay(8,()=>p.hp=Math.min(p.maxHp,p.hp+40+p.healPower))},
+  {name:'庚精碎片', icon:'sword', cost:14, desc:'飞剑伤害 +10。', buy:p=>pay(14,()=>{p.damage+=10; p.upgradeFlags.sword+=1;})},
+  {name:'风雷晶石', icon:'ice', cost:16, desc:'攻击冷却减少 10%。', buy:p=>pay(16,()=>{p.cooldown*=0.9; p.upgradeFlags.wind+=1;})},
+  {name:'灵虫饲丸', icon:'bug', cost:12, desc:'噬金虫群等级 +1。', buy:p=>pay(12,()=>p.bugLevel+=1)},
+  {name:'护脉诀', icon:'shield', cost:18, desc:'生命上限 +30，护盾 +20。', buy:p=>pay(18,()=>{p.maxHp+=30;p.hp+=30;p.maxShield+=20;p.shield+=20;})},
+  {name:'符阵残页', icon:'talisman', cost:15, desc:'符箓飞阵等级 +1。', buy:p=>pay(15,()=>p.talismanLevel+=1)},
+  {name:'金雷竹芯', icon:'sword', cost:20, desc:'飞剑数量 +1。', buy:p=>pay(20,()=>{p.weaponCount+=1; p.upgradeFlags.sword+=1;})},
+  {name:'妖丹精华', icon:'bug', cost:22, desc:'暴击率 +10%。', buy:p=>pay(22,()=>{p.crit+=0.1; p.bugLevel+=1;})}
+];
+
+const metaDefs = [
+  {id:'hp', name:'长生血脉', cost:l=>8+l*4, desc:'每级 +12 最大生命', apply:(s,l)=>s.hpBonus=l*12},
+  {id:'atk', name:'法宝精研', cost:l=>8+l*5, desc:'每级 +3 基础伤害', apply:(s,l)=>s.atkBonus=l*3},
+  {id:'pick', name:'神识远照', cost:l=>6+l*4, desc:'每级 +10 拾取范围', apply:(s,l)=>s.pickBonus=l*10},
+  {id:'soul', name:'魂玉积累', cost:l=>10+l*6, desc:'每级 +10% 局外魂玉获取', apply:(s,l)=>s.soulGain=1+l*0.1},
+  {id:'unlockBug', name:'解锁噬金虫', cost:l=>l?999:18, desc:'解锁噬金虫系强化与商店物品', apply:(s,l)=>s.unlockBug=!!l},
+  {id:'unlockTalisman', name:'解锁符阵', cost:l=>l?999:18, desc:'解锁符箓飞阵系强化与商店物品', apply:(s,l)=>s.unlockTalisman=!!l}
+];
+
+const defaultMeta = { currency:0, selectedHero:'hanli', difficulty:'normal', levels:{ hp:0, atk:0, pick:0, soul:0, unlockBug:0, unlockTalisman:0 }, heroSkills:{ hanli:{h1:0,h2:0}, nangong:{n1:0,n2:0}, demon:{d1:0,d2:0} } };
+let meta = loadMeta();
+function loadMeta(){ try{ return Object.assign({}, defaultMeta, JSON.parse(localStorage.getItem('fanrenMeta')||'{}')); } catch{ return JSON.parse(JSON.stringify(defaultMeta)); } }
+function saveMeta(){ try{ localStorage.setItem('fanrenMeta', JSON.stringify(meta)); } catch{} }
+function resetMeta(){ meta = JSON.parse(JSON.stringify(defaultMeta)); saveMeta(); renderMeta(); renderHeroes(); }
+
+let audioCtx = null, soundOn = true, state, last = performance.now();
+function ensureAudio(){ if(!audioCtx && soundOn) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function beep(type='hit'){
+  if(!soundOn) return; ensureAudio(); if(!audioCtx) return;
+  const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  const map={ sword:[720,'triangle',0.04], hit:[180,'square',0.03], level:[520,'sine',0.1], buy:[320,'triangle',0.08], boss:[110,'sawtooth',0.18], dash:[880,'square',0.05], summon:[240,'sawtooth',0.15] };
+  const [f,w,d]=map[type]||map.hit; o.type=w; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*.7,t+d); g.gain.setValueAtTime(.001,t); g.gain.exponentialRampToValueAtTime(.05,t+.01); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+d+.02);
+}
+function toggleSound(){ soundOn=!soundOn; toggleSoundBtn.textContent=`音效：${soundOn?'开':'关'}`; }
+
+function rand(a,b){ return Math.random()*(b-a)+a; }
+function dist(a,b,c,d){ return Math.hypot(a-c,b-d); }
+function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function iconHTML(name){ return icons[name] || icons.sword; }
+function drawIcon(name,x,y,size){
+  ctx.save(); ctx.translate(x,y); const s=size/64;
+  ctx.scale(s,s);
+  const p = new DOMParser().parseFromString(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>${(icons[name]||icons.sword).match(/<svg[^>]*>(.*)<\/svg>/s)[1]}</svg>`,'image/svg+xml');
+  const img = new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(p.documentElement));
+  ctx.drawImage(img,-32,-32,64,64); ctx.restore();
+}
+function pay(cost, fn){ const p=state.player; if(p.gold<cost) return false; p.gold-=cost; fn(); return true; }
+function openOverlay(name){ Object.values(overlays).forEach(o=>o.classList.remove('show')); if(name) overlays[name].classList.add('show'); state && (state.running=false); }
+function closeOverlays(){ Object.values(overlays).forEach(o=>o.classList.remove('show')); if(state && !state.ended) state.running=true; }
+function currentStage(){ return stages[(Math.max(1,state.wave)-1)%stages.length]; }
+
+function applyHeroSkillBonuses(p){
+  const hs = meta.heroSkills[meta.selectedHero] || {};
+  if(meta.selectedHero==='hanli'){ p.damage += (hs.h1||0)*4; p.speed += (hs.h2||0)*0.08; }
+  if(meta.selectedHero==='nangong'){ p.talismanLevel += (hs.n1||0); p.maxShield += (hs.n2||0)*10; p.shield += (hs.n2||0)*10; }
+  if(meta.selectedHero==='demon'){ p.crit += (hs.d1||0)*0.03; p.lifeSteal = (hs.d2||0)*0.6; }
+}
+
+function applyMetaBonuses(p){
+  const store = { hpBonus:0, atkBonus:0, pickBonus:0, soulGain:1, unlockBug:false, unlockTalisman:false };
+  metaDefs.forEach(def=>def.apply(store, meta.levels[def.id]||0));
+  p.maxHp += store.hpBonus; p.hp += store.hpBonus; p.damage += store.atkBonus; p.pickup += store.pickBonus; p.soulGain = store.soulGain; p.unlockBug = store.unlockBug; p.unlockTalisman = store.unlockTalisman;
+}
+
+function resetGame(){
+  state = {
+    running:false, ended:false, time:0, kills:0, wave:1, waveTimer:0, waveDuration:38, spawnTimer:0, soulEarned:0,
+    projectiles:[], enemies:[], drops:[], effects:[], boss:null, shopPool:[], bossProjectiles:[],
+    player:{ x:W/2,y:H/2,r:15,speed:3.1,hp:110,maxHp:110,shield:0,maxShield:0,armor:0,level:1,xp:0,xpNeed:30,gold:0,
+      damage:18, weaponCount:1, cooldown:520, cd:0, range:230, pickup:30, bugLevel:0, talismanLevel:0, healPower:0, crit:0.05,
+      evolvedSword:false,evolvedWind:false,upgradeFlags:{sword:0,wind:0,thunder:0},dashCd:0,hero:meta.selectedHero,soulGain:1,unlockBug:false,unlockTalisman:false }
+  };
+  applyMetaBonuses(state.player);
+  heroes[meta.selectedHero].apply(state.player);
+  applyHeroSkillBonuses(state.player);
+  state.difficulty = difficulties[meta.difficulty||'normal'];
+  renderShop(); updateUI(); updateBossUI();
+}
+resetGame();
+
+function renderHeroes(){
+  heroCards.innerHTML='';
+  Object.entries(heroes).forEach(([id,h])=>{
+    const card=document.createElement('div'); card.className='card'+(meta.selectedHero===id?' active':'');
+    card.innerHTML=`<div><div class='portrait'>${iconHTML(h.icon)}</div><div style='margin-top:12px'><span class='tag'>角色</span><h3>${h.name}</h3><p>${h.desc}</p></div></div><button>${meta.selectedHero===id?'已选择':'选择'}</button>`;
+    card.querySelector('button').onclick=()=>{ meta.selectedHero=id; saveMeta(); renderHeroes(); updateUI(); };
+    heroCards.appendChild(card);
+  });
+}
+function renderUnlocks(){
+  unlockIcons.innerHTML='';
+  const list=['sword','shield'];
+  if(meta.levels.unlockBug) list.push('bug');
+  if(meta.levels.unlockTalisman) list.push('talisman');
+  list.push('ice');
+  list.forEach(k=>{ const d=document.createElement('div'); d.className='svgicon'; d.innerHTML=iconHTML(k); unlockIcons.appendChild(d); });
+}
+function renderDifficulty(){
+  difficultyLabel.textContent = difficulties[meta.difficulty||'normal'].name;
+  difficultyCards.innerHTML='';
+  Object.entries(difficulties).forEach(([id,d])=>{
+    const card=document.createElement('div'); card.className='card'+((meta.difficulty||'normal')===id?' active':'');
+    card.innerHTML=`<div><span class='tag'>难度</span><h3>${d.name}</h3><p>敌人生命 x${d.enemyHp}，伤害 x${d.enemyDmg}，魂玉收益 x${d.soul}</p></div><button>${(meta.difficulty||'normal')===id?'已选择':'选择'}</button>`;
+    card.querySelector('button').onclick=()=>{ meta.difficulty=id; saveMeta(); renderDifficulty(); };
+    difficultyCards.appendChild(card);
+  });
+}
+
+function renderHeroSkills(){
+  const hero = meta.selectedHero;
+  const hs = meta.heroSkills[hero];
+  const wrap = document.createElement('div');
+  wrap.className='tree';
+  heroSkillTrees[hero].forEach(def=>{
+    const lv = hs[def.id]||0, cost = def.cost(lv);
+    const node = document.createElement('div');
+    node.className='node';
+    node.innerHTML = `<strong>${def.name}</strong><div style='font-size:13px;color:var(--muted);margin-bottom:8px'>Lv.${lv} · ${def.desc}</div><button ${meta.currency<cost?'disabled':''}>升级 ${cost} 魂玉</button>`;
+    node.querySelector('button').onclick=()=>{ if(meta.currency>=cost){ meta.currency-=cost; hs[def.id]=lv+1; saveMeta(); renderMeta(); } };
+    wrap.appendChild(node);
+  });
+  return wrap;
+}
+
+function renderEncyclopedia(){
+  encyclopediaHeroes.innerHTML=''; encyclopediaWeapons.innerHTML=''; encyclopediaEnemies.innerHTML='';
+  Object.values(heroes).forEach(h=>{ const c=document.createElement('div'); c.className='card'; c.innerHTML=`<div><div class='portrait'>${iconHTML(h.icon)}</div><span class='tag'>角色</span><h3>${h.name}</h3><p>${h.desc}</p></div>`; encyclopediaHeroes.appendChild(c); });
+  const weaponList = ['sword','shield','bug','talisman','ice'];
+  weaponList.forEach(k=>{ const c=document.createElement('div'); c.className='card'; c.innerHTML=`<div><div class='svgicon'>${iconHTML(k)}</div><span class='tag'>法宝</span><h3>${({sword:'青竹蜂云剑',shield:'白鳞盾',bug:'噬金虫群',talisman:'符箓飞阵',ice:'冰焰秘术'})[k]}</h3><p>修仙战斗核心构筑资源。</p></div>`; encyclopediaWeapons.appendChild(c); });
+  enemyTypes.forEach(e=>{ const c=document.createElement('div'); c.className='card'; c.innerHTML=`<div><div class='svgicon'>${iconHTML(e.icon)}</div><span class='tag'>敌人</span><h3>${e.name}</h3><p>速度 ${e.speed}，基础伤害 ${e.dmg}。</p></div>`; encyclopediaEnemies.appendChild(c); });
+  Object.values(bosses).forEach(b=>{ const c=document.createElement('div'); c.className='card'; c.innerHTML=`<div><div class='svgicon'>${iconHTML(b.icon)}</div><span class='tag'>Boss</span><h3>${b.name}</h3><p>${b.phases.join(' / ')}</p></div>`; encyclopediaEnemies.appendChild(c); });
+}
+
+function renderMeta(){
+  metaCurrencyEl.textContent = meta.currency;
+  metaTree.innerHTML='';
+  const skillTitle=document.createElement('div'); skillTitle.className='node'; skillTitle.innerHTML=`<strong>角色专属技能树</strong><div style='font-size:13px;color:var(--muted)'>当前角色：${heroes[meta.selectedHero].name}</div>`; metaTree.appendChild(skillTitle); metaTree.appendChild(renderHeroSkills());
+  metaDefs.forEach(def=>{
+    const lv = meta.levels[def.id]||0, cost = def.cost(lv), locked = meta.currency < cost || cost>=999;
+    const node=document.createElement('div'); node.className='node';
+    node.innerHTML=`<strong>${def.name}</strong><div style='font-size:13px;color:var(--muted);margin-bottom:8px'>Lv.${lv} · ${def.desc}</div><button ${locked?'disabled':''}>${cost>=999?'已满级':`升级 ${cost} 魂玉`}</button>`;
+    node.querySelector('button').onclick=()=>{ if(meta.currency>=cost && cost<999){ meta.currency-=cost; meta.levels[def.id]=lv+1; saveMeta(); renderMeta(); renderUnlocks(); } };
+    metaTree.appendChild(node);
+  });
+}
+
+function maybeEvolve(){
+  const p=state.player;
+  if(!p.evolvedSword && (p.upgradeFlags.sword>=3 || (p.weaponCount>=4 && p.upgradeFlags.thunder>=2))){ p.evolvedSword=true; p.damage+=16; p.weaponCount+=1; p.cooldown*=0.86; state.effects.push({type:'announce',text:'青竹蜂云剑 → 大庚剑阵',life:120}); beep('level'); }
+  if(!p.evolvedWind && p.upgradeFlags.wind>=3){ p.evolvedWind=true; p.speed+=0.65; state.effects.push({type:'announce',text:'风雷翅 → 九闪风雷遁',life:120}); beep('level'); }
+}
+function startRun(){ resetGame(); closeOverlays(); state.running=true; ensureAudio(); }
+function backToMenu(){ resetGame(); openOverlay('menu'); bossBarWrap.classList.remove('show'); renderMeta(); renderHeroes(); renderUnlocks(); }
+function togglePause(){ if(overlays.menu.classList.contains('show')||overlays.level.classList.contains('show')||overlays.shop.classList.contains('show')||overlays.gameOver.classList.contains('show')) return; if(overlays.pause.classList.contains('show')){ closeOverlays(); return; } openOverlay('pause'); }
+function startNextWave(){ closeOverlays(); state.waveTimer=0; state.spawnTimer=0; maybeEvolve(); }
+function rerollShop(){ if(state.player.gold<6) return; state.player.gold-=6; renderShop(); updateUI(); }
+
+function gainXp(v){ const p=state.player; p.xp+=v; while(p.xp>=p.xpNeed){ p.xp-=p.xpNeed; p.level+=1; p.xpNeed=Math.floor(p.xpNeed*1.28); showLevelChoices(); beep('level'); } }
+function filterUpgrades(){ return upgrades.filter(u=> (u.id!=='bug' || state.player.unlockBug) && (u.id!=='talisman' || state.player.unlockTalisman)); }
+function filterShop(){ return shopItems.filter(u=> (u.icon!=='bug' || state.player.unlockBug) && (u.icon!=='talisman' || state.player.unlockTalisman)); }
+function showLevelChoices(){ state.running=false; overlays.level.classList.add('show'); levelCards.innerHTML=''; [...filterUpgrades()].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{ const card=document.createElement('div'); card.className='card'; card.innerHTML=`<div><div class='svgicon'>${iconHTML(u.icon)}</div><span class='tag'>强化</span><h3>${u.name}</h3><p>${u.desc}</p></div><button>选择</button>`; card.querySelector('button').onclick=()=>{ u.apply(state.player); overlays.level.classList.remove('show'); maybeEvolve(); state.running=true; updateUI(); }; levelCards.appendChild(card); }); }
+function renderShop(){ shopCards.innerHTML=''; state.shopPool=[...filterShop()].sort(()=>Math.random()-.5).slice(0,4); state.shopPool.forEach(item=>{ const card=document.createElement('div'); card.className='card'; card.innerHTML=`<div><div class='svgicon'>${iconHTML(item.icon)}</div><span class='tag'>${item.cost} 灵石</span><h3>${item.name}</h3><p>${item.desc}</p></div><button>购买</button>`; const btn=card.querySelector('button'); btn.onclick=()=>{ if(item.buy(state.player)){ btn.disabled=true; btn.textContent='已购'; beep('buy'); maybeEvolve(); updateUI(); } else { btn.textContent='灵石不足'; setTimeout(()=>btn.textContent='购买',800); } }; shopCards.appendChild(card); }); }
+function finishWave(){ state.running=false; shopTitle.textContent=`Finish 第 ${state.wave} 关`; renderShop(); openOverlay('shop'); state.wave+=1; state.waveDuration=Math.min(62,state.waveDuration+5); }
+
+function spawnEnemy(kind='normal'){
+  const edge=Math.floor(Math.random()*4); let x,y;
+  if(edge===0){x=rand(0,W);y=-30;} if(edge===1){x=W+30;y=rand(0,H);} if(edge===2){x=rand(0,W);y=H+30;} if(edge===3){x=-30;y=rand(0,H);} 
+  let base;
+  if(kind==='wolf') base = enemyTypes.find(e=>e.name.includes('狼')) || enemyTypes[3];
+  else if(kind==='fish') base = enemyTypes.find(e=>e.name.includes('鱼')) || enemyTypes[2];
+  else base = enemyTypes[Math.min(enemyTypes.length-1, Math.floor((state.wave-1)/1.1) + (Math.random()<0.2?1:0))];
+  const diff = state.difficulty || difficulties.normal;
+  const scale=(1+(state.wave-1)*0.13) * diff.enemyHp;
+  state.enemies.push({x,y,hp:base.hp*scale,maxHp:base.hp*scale,speed:base.speed+state.wave*0.03,size:base.size,color:base.color,dmg:base.dmg*(state.difficulty.enemyDmg||1)*(1+(state.wave-1)*0.13),reward:Math.ceil(base.reward*scale),elite:!!base.elite,name:base.name,icon:base.icon,type:'mob',hitFlash:0,skillCd:rand(1500,3500)});
+}
+function spawnBoss(){
+  const cfg=bosses[state.wave]; if(!cfg || state.boss) return;
+  const diff = state.difficulty || difficulties.normal;
+  const boss={x:W/2,y:-80,hp:cfg.hp*diff.enemyHp,maxHp:cfg.hp*diff.enemyHp,size:cfg.size,speed:cfg.speed,dmg:cfg.dmg*diff.enemyDmg,reward:Math.round(cfg.reward*diff.soul),color:cfg.color,name:cfg.name,icon:cfg.icon,type:'boss',hitFlash:0,skillCd:2200,phase:1,phaseName:cfg.phases[0]};
+  state.enemies.push(boss); state.boss=boss; state.effects.push({type:'announce',text:`Boss 来袭：${cfg.name}`,life:150}); beep('boss'); updateBossUI();
+}
+
+function autoAttack(dt){
+  const p=state.player; p.cd-=dt; if(p.cd>0) return;
+  const targets=state.enemies.filter(e=>dist(p.x,p.y,e.x,e.y)<=p.range).sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y)).slice(0,p.weaponCount);
+  if(!targets.length) return; p.cd=p.cooldown;
+  targets.forEach((t,i)=>{ const spread=p.evolvedSword?.2:.12; const ang=Math.atan2(t.y-p.y,t.x-p.x)+(i-(targets.length-1)/2)*spread; state.projectiles.push({x:p.x,y:p.y,vx:Math.cos(ang)*(p.evolvedSword?8.3:6.9),vy:Math.sin(ang)*(p.evolvedSword?8.3:6.9),life:100,r:p.evolvedSword?5:4,dmg:p.damage*(Math.random()<p.crit?1.8:1),icon:'sword',color:p.evolvedSword?'#dceaa1':'#9ce8c0'}); }); beep('sword');
+}
+function castSkills(dt){
+  const p=state.player;
+  if(p.bugLevel>0){ state.enemies.forEach(e=>{ if(dist(p.x,p.y,e.x,e.y)<58+p.bugLevel*18) e.hp-=0.08*p.bugLevel*dt*(state.boss===e?.55:1); }); }
+  p.talismanCd=(p.talismanCd||0)-dt;
+  if(p.talismanLevel>0 && p.talismanCd<=0){ p.talismanCd=Math.max(1500,3400-p.talismanLevel*420); state.effects.push({type:'burst',x:p.x,y:p.y,r:30,life:22,max:22}); state.enemies.forEach(e=>{ if(dist(p.x,p.y,e.x,e.y)<128+p.talismanLevel*22) e.hp-=18*p.talismanLevel; }); }
+  if(p.evolvedWind){ p.dashCd=(p.dashCd||0)-dt; if(p.dashCd<=0){ p.dashCd=2600; let dx=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0), dy=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0); const l=Math.hypot(dx,dy)||1; dx/=l; dy/=l; if(dx||dy){ p.x=Math.max(20,Math.min(W-20,p.x+dx*90)); p.y=Math.max(20,Math.min(H-20,p.y+dy*90)); state.effects.push({type:'dash',x:p.x,y:p.y,life:16}); beep('dash'); } } }
+}
+
+function updateBossUI(){
+  if(state.boss && state.enemies.includes(state.boss)){ bossBarWrap.classList.add('show'); bossNameEl.textContent=state.boss.name; bossFill.style.width=`${Math.max(0,state.boss.hp/state.boss.maxHp)*100}%`; bossPhaseEl.textContent=state.boss.phaseName||'一阶段'; ui.bossState.textContent='激战中'; }
+  else { bossBarWrap.classList.remove('show'); ui.bossState.textContent=bosses[state.wave]?'即将出现':'无'; }
+}
+
+function spawnBossBullet(x,y,ang,speed,color='#f0d39a'){ state.bossProjectiles.push({x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:180,r:6,color}); }
+function bossSkill(e,dt){
+  e.skillCd-=dt; if(e.skillCd>0) return;
+  const p=state.player;
+  if(e.name==='筑基狼王'){
+    if(e.phase===1){ for(let i=0;i<3;i++) spawnEnemy('wolf'); e.phase=2; e.phaseName='冲锋撕裂'; state.effects.push({type:'announce',text:'狼王召来狼群！',life:90}); beep('summon'); }
+    else { const a=Math.atan2(p.y-e.y,p.x-e.x); e.x+=Math.cos(a)*120; e.y+=Math.sin(a)*120; state.effects.push({type:'ring',x:e.x,y:e.y,life:18}); }
+    e.skillCd=2400;
+  } else if(e.name==='车老妖化身'){
+    if(e.phase===1){ for(let i=0;i<10;i++){ const a=i/10*Math.PI*2; spawnBossBullet(e.x,e.y,a,3.2,'#e4b46a'); } e.phase=2; e.phaseName='重击震荡'; state.effects.push({type:'announce',text:'妖气四散，弹幕袭来！',life:90}); }
+    else { state.effects.push({type:'slam',x:e.x,y:e.y,life:26}); if(dist(e.x,e.y,p.x,p.y)<180) p.hp-=18; if(Math.random()<.5) for(let i=0;i<2;i++) spawnEnemy('normal'); }
+    e.skillCd=2800;
+  } else if(e.name==='风希化身'){
+    if(e.phase===1){ for(let i=0;i<14;i++){ const a=Math.atan2(p.y-e.y,p.x-e.x)-0.6+i*(1.2/13); spawnBossBullet(e.x,e.y,a,4.2,'#9fe8ff'); } e.phase=2; e.phaseName='极速转场'; state.effects.push({type:'announce',text:'风刃弹幕！',life:90}); }
+    else { e.x=rand(120,W-120); e.y=rand(120,H-120); state.effects.push({type:'wind',x:e.x,y:e.y,life:22}); for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; spawnBossBullet(e.x,e.y,a,3.8,'#b9f0ff'); } }
+    e.skillCd=2200;
+  }
+}
+
+function update(dt){
+  if(!state.running) return;
+  state.time+=dt; state.waveTimer+=dt/1000; state.spawnTimer+=dt;
+  const p=state.player;
+  let dx=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0), dy=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0); const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len;
+  p.x=Math.max(20,Math.min(W-20,p.x+dx*p.speed*dt/16.67)); p.y=Math.max(20,Math.min(H-20,p.y+dy*p.speed*dt/16.67));
+
+  const diff = state.difficulty || difficulties.normal;
+  if(!bosses[state.wave]){ const gap=Math.max(160,860-state.wave*65); if(state.spawnTimer>=gap){ state.spawnTimer=0; for(let i=0;i<1+Math.floor(state.wave/3);i++) spawnEnemy(); } if(state.waveTimer>=state.waveDuration) finishWave(); }
+  else { if(!state.boss) spawnBoss(); if(state.spawnTimer>=780){ state.spawnTimer=0; spawnEnemy(); } }
+
+  autoAttack(dt); castSkills(dt);
+  state.projectiles.forEach(pr=>{ pr.x+=pr.vx*dt/16.67; pr.y+=pr.vy*dt/16.67; pr.life-=dt/16.67; });
+  state.projectiles=state.projectiles.filter(pr=>pr.life>0 && pr.x>-30 && pr.x<W+30 && pr.y>-30 && pr.y<H+30);
+  state.bossProjectiles.forEach(pr=>{ pr.x+=pr.vx*dt/16.67; pr.y+=pr.vy*dt/16.67; pr.life-=dt/16.67; if(dist(pr.x,pr.y,p.x,p.y)<pr.r+p.r){ p.hp-=8; pr.life=0; } });
+  state.bossProjectiles=state.bossProjectiles.filter(pr=>pr.life>0 && pr.x>-40 && pr.x<W+40 && pr.y>-40 && pr.y<H+40);
+
+  state.enemies.forEach(e=>{
+    const a=Math.atan2(p.y-e.y,p.x-e.x); e.x+=Math.cos(a)*e.speed*dt/16.67; e.y+=Math.sin(a)*e.speed*dt/16.67; e.hitFlash=Math.max(0,e.hitFlash-dt/100);
+    if(e.type==='boss'){ if(e.hp<e.maxHp*0.5 && e.phase===1){ e.phase=2; e.phaseName=(bosses[state.wave].phases[1]||'二阶段'); state.effects.push({type:'announce',text:`${e.name} 进入二阶段！`,life:120}); } bossSkill(e,dt); }
+    if(dist(e.x,e.y,p.x,p.y)<e.size+p.r){ const raw=e.dmg*dt/1000, dmg=Math.max(.2,raw*(1-p.armor)); if(p.shield>0){ const block=Math.min(p.shield,dmg); p.shield-=block; p.hp-=Math.max(0,dmg-block); } else p.hp-=dmg; }
+  });
+
+  for(const pr of state.projectiles){ for(const e of state.enemies){ if(dist(pr.x,pr.y,e.x,e.y)<pr.r+e.size){ e.hp-=pr.dmg; e.hitFlash=1; pr.life=0; if(Math.random()<0.3) beep('hit'); break; } } }
+
+  state.enemies=state.enemies.filter(e=>{
+    if(e.hp<=0){
+      if(e===state.boss){ state.player.gold+=e.reward; state.soulEarned += Math.round(18 * state.player.soulGain * (state.difficulty.soul||1)); state.effects.push({type:'announce',text:`Boss 已斩：${e.name}`,life:150}); state.boss=null; state.wave+=1; state.waveDuration=Math.min(62,state.waveDuration+6); renderShop(); openOverlay('shop'); }
+      else { state.kills++; state.drops.push({x:e.x,y:e.y,type:Math.random()<0.74?'xp':'gold',v:e.elite?4:2,life:9000,reward:e.reward}); if(e.elite) state.soulEarned += Math.round(2 * state.player.soulGain * (state.difficulty.soul||1)); if(state.player.lifeSteal) state.player.hp=Math.min(state.player.maxHp,state.player.hp+state.player.lifeSteal); }
+      return false;
+    }
+    return true;
+  });
+
+  state.drops.forEach(d=>{ d.life-=dt; const di=dist(d.x,d.y,p.x,p.y); if(di<p.pickup+10){ if(d.type==='xp') gainXp(d.v); else p.gold+=d.reward; d.life=0; } else if(di<p.pickup+84){ d.x+=(p.x-d.x)*0.05; d.y+=(p.y-d.y)*0.05; } });
+  state.drops=state.drops.filter(d=>d.life>0);
+  state.effects.forEach(f=>f.life-=dt/16.67); state.effects=state.effects.filter(f=>f.life>0);
+
+  if(p.hp<=0){ state.running=false; state.ended=true; meta.currency += state.soulEarned; saveMeta(); gameOverText.textContent=`你撑到了第 ${state.wave} 关，击杀 ${state.kills} 个敌人，带回 ${Math.floor(p.gold)} 灵石，并获得 ${state.soulEarned} 魂玉。`; openOverlay('gameOver'); renderMeta(); }
+  updateBossUI(); updateUI();
+}
+
+function updateUI(){ const p=state.player; ui.hp.textContent=`${Math.max(0,Math.floor(p.hp))} / ${p.maxHp}`; ui.shield.textContent=`${Math.floor(p.shield)} / ${p.maxShield}`; ui.gold.textContent=Math.floor(p.gold); ui.level.textContent=p.level; ui.xp.textContent=`${Math.floor(p.xp)} / ${p.xpNeed}`; ui.wave.textContent=state.wave; ui.kills.textContent=state.kills; ui.stage.textContent=currentStage().name; ui.heroName.textContent=heroes[meta.selectedHero].name; if(!state.boss && !bosses[state.wave]) ui.bossState.textContent='无'; }
+function drawCircle(x,y,r,c,a=1){ ctx.globalAlpha=a; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=c; ctx.fill(); ctx.globalAlpha=1; }
+function drawText(msg,y,alpha=.9){ ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle='#f0ead4'; ctx.font='700 28px Noto Sans SC'; ctx.textAlign='center'; ctx.fillText(msg,W/2,y); ctx.restore(); }
+
+const imgCache={};
+function getIconImg(name){ if(imgCache[name]) return imgCache[name]; const inner=(icons[name]||icons.sword).match(/<svg[^>]*>(.*)<\/svg>/s)[1]; const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>${inner}</svg>`; const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); imgCache[name]=img; return img; }
+function drawSprite(icon,x,y,size,alpha=1){ const img=getIconImg(icon); ctx.save(); ctx.globalAlpha=alpha; ctx.drawImage(img,x-size/2,y-size/2,size,size); ctx.restore(); }
+
+function draw(){
+  const st=currentStage(); const grd=ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,Math.max(W,H)*0.78); grd.addColorStop(0,st.bg1); grd.addColorStop(1,st.bg2); ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<40;i++){ const x=(i*93+state.time*0.01*(i%3+1))%W, y=((i*57)%H+Math.sin(state.time*0.001+i)*8); drawCircle(x,y,1.2,`rgba(190,220,210,${0.05+(i%4)*0.02})`); }
+  const p=state.player;
+  if(p.bugLevel>0){ const count=6+p.bugLevel*2; for(let i=0;i<count;i++){ const ang=state.time*0.002+i*Math.PI*2/count; drawSprite('bug',p.x+Math.cos(ang)*(32+p.bugLevel*5),p.y+Math.sin(ang)*(32+p.bugLevel*5),18,.95); } }
+  state.effects.forEach(f=>{ if(f.type==='burst') drawCircle(f.x,f.y,f.r+(1-f.life/f.max)*130,'rgba(132,215,243,.24)',.34); if(f.type==='ring') drawCircle(f.x,f.y,36+(18-f.life)*4,'rgba(255,215,180,.18)',.35); if(f.type==='slam') drawCircle(f.x,f.y,50+(26-f.life)*5,'rgba(228,180,106,.16)',.4); if(f.type==='wind') drawCircle(f.x,f.y,60+(22-f.life)*4,'rgba(144,224,255,.14)',.38); if(f.type==='dash') drawCircle(f.x,f.y,26+(16-f.life)*3,'rgba(121,207,170,.18)',.35); });
+  state.drops.forEach(d=>drawCircle(d.x,d.y,d.type==='xp'?5:6,d.type==='xp'?'#8ce3ff':'#dcb670',.96));
+  state.projectiles.forEach(pr=>drawSprite(pr.icon,pr.x,pr.y,18,.98));
+  state.bossProjectiles.forEach(pr=>drawCircle(pr.x,pr.y,pr.r,pr.color,.95));
+  state.enemies.forEach(e=>{ if(e.hitFlash) drawCircle(e.x,e.y,e.size+5,'rgba(255,255,255,.14)',.85); drawSprite(e.icon,e.x,e.y,e.type==='boss'?e.size*1.8:e.size*1.8,.98); if(e.type==='boss') drawCircle(e.x,e.y,e.size+12,'rgba(255,220,180,.08)',.8); });
+  drawSprite(heroes[meta.selectedHero].icon,p.x,p.y,44,1); if(p.shield>0){ ctx.strokeStyle='rgba(180,220,255,.76)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(p.x,p.y,p.r+14,0,Math.PI*2); ctx.stroke(); }
+  const hpw=160; ctx.fillStyle='rgba(255,255,255,.1)'; ctx.fillRect(p.x-hpw/2,p.y-36,hpw,8); ctx.fillStyle='#cf6969'; ctx.fillRect(p.x-hpw/2,p.y-36,hpw*(p.hp/p.maxHp),8);
+  state.effects.filter(f=>f.type==='announce').forEach((f,i)=>drawText(f.text,H*0.22+i*34,Math.min(.95,f.life/40)));
+}
+
+function loop(now){ const dt=Math.min(40,now-last); last=now; update(dt); draw(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+startBtn.onclick=()=>startRun(); nextWaveBtn.onclick=()=>startNextWave(); restartBtn.onclick=()=>startRun(); gameOverMenuBtn.onclick=()=>backToMenu(); backMenuBtn.onclick=()=>backToMenu(); resumeBtn.onclick=()=>closeOverlays(); pauseBtn.onclick=()=>togglePause(); toggleSoundBtn.onclick=()=>toggleSound(); pauseSoundBtn.onclick=()=>toggleSound(); rerollShopBtn.onclick=()=>rerollShop(); resetMetaBtn.onclick=()=>resetMeta();
+renderHeroes(); renderMeta(); renderUnlocks(); renderDifficulty(); renderEncyclopedia(); openOverlay('menu');
+encyclopediaBtn.onclick=()=>openOverlay('encyclopedia');
+closeEncyclopediaBtn.onclick=()=>openOverlay('menu');
+settingsBtn.onclick=()=>openOverlay('settings');
+closeSettingsBtn.onclick=()=>openOverlay('menu');
+settingsSoundBtn.onclick=()=>toggleSound();
+</script>
+</body>
+</html>
